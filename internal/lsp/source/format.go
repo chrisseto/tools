@@ -54,15 +54,21 @@ func Format(ctx context.Context, snapshot Snapshot, fh FileHandle) ([]protocol.T
 	}
 	formatted := buf.String()
 
-	// Apply additional formatting, if any is supported. Currently, the only
-	// supported additional formatter is gofumpt.
+	// Apply additional formatting, if any is supported.
 	if format := snapshot.View().Options().Hooks.GofumptFormat; snapshot.View().Options().Gofumpt && format != nil {
 		b, err := format(ctx, buf.Bytes())
 		if err != nil {
 			return nil, err
 		}
 		formatted = string(b)
+	} else if format := snapshot.View().Options().Hooks.ExecFormat; len(snapshot.View().Options().Exec) > 0 && format != nil {
+		b, err := format(ctx, snapshot.View().Options().Exec, buf.Bytes())
+		if err != nil {
+			return nil, err
+		}
+		formatted = string(b)
 	}
+
 	return computeTextEdits(ctx, snapshot, pgf, formatted)
 }
 

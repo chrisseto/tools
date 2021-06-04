@@ -344,6 +344,11 @@ type FormattingOptions struct {
 
 	// Gofumpt indicates if we should run gofumpt formatting.
 	Gofumpt bool
+
+	// Exec indicates we should shell out to an external program for
+	// formatting, if not empty. Exec is mutually exclusive with other
+	// formatting options.
+	Exec []string
 }
 
 type DiagnosticOptions struct {
@@ -442,6 +447,7 @@ type Hooks struct {
 	ComputeEdits         diff.ComputeEdits
 	URLRegexp            *regexp.Regexp
 	GofumptFormat        func(ctx context.Context, src []byte) ([]byte, error)
+	ExecFormat           func(ctx context.Context, cmd []string, src []byte) ([]byte, error)
 	DefaultAnalyzers     map[string]*Analyzer
 	TypeErrorAnalyzers   map[string]*Analyzer
 	ConvenienceAnalyzers map[string]*Analyzer
@@ -670,6 +676,7 @@ func (o *Options) Clone() *Options {
 			GoDiff:        o.Hooks.GoDiff,
 			ComputeEdits:  o.Hooks.ComputeEdits,
 			GofumptFormat: o.GofumptFormat,
+			ExecFormat:    o.ExecFormat,
 			URLRegexp:     o.URLRegexp,
 		},
 		ServerOptions: o.ServerOptions,
@@ -896,6 +903,17 @@ func (o *Options) set(name string, value interface{}, seen map[string]struct{}) 
 
 	case "gofumpt":
 		result.setBool(&o.Gofumpt)
+
+	case "exec":
+		cmds, ok := value.([]interface{})
+		if !ok {
+			result.errorf("invalid type %T, expect list", value)
+			break
+		}
+		o.Exec = make([]string, len(cmds))
+		for i, cmd := range cmds {
+			o.Exec[i] = fmt.Sprint(cmd)
+		}
 
 	case "semanticTokens":
 		result.setBool(&o.SemanticTokens)

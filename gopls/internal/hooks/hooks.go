@@ -8,7 +8,9 @@
 package hooks // import "golang.org/x/tools/gopls/internal/hooks"
 
 import (
+	"bytes"
 	"context"
+	"os/exec"
 	"regexp"
 
 	"golang.org/x/tools/internal/lsp/source"
@@ -24,6 +26,16 @@ func Options(options *source.Options) {
 	options.URLRegexp = relaxedFullWord
 	options.GofumptFormat = func(ctx context.Context, src []byte) ([]byte, error) {
 		return format.Source(src, format.Options{})
+	}
+	options.ExecFormat = func(ctx context.Context, cmds []string, src []byte) ([]byte, error) {
+		var buf bytes.Buffer
+		cmd := exec.CommandContext(ctx, cmds[0], cmds[1:]...)
+		cmd.Stdin = bytes.NewBuffer(src)
+		cmd.Stdout = &buf
+		if err := cmd.Run(); err != nil {
+			return nil, err
+		}
+		return buf.Bytes(), nil
 	}
 	updateAnalyzers(options)
 }
